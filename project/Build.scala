@@ -37,6 +37,7 @@ object SprayPlaygroundBuild extends Build {
       // Spray
       "io.spray" % "spray-can"  % sprayVersion,
       "io.spray" % "spray-http" % sprayVersion,
+      "io.spray" % "spray-routing" % sprayVersion,
       // Slick
       "com.typesafe.slick" %% "slick" % "2.0.2",
       // ScalaTest
@@ -51,7 +52,7 @@ object SprayPlaygroundBuild extends Build {
         exclude("org.slf4j", "slf4j-simple")
     ),
 
-    gitRemoteRepo := "git@github.com:ataraxer/spray-patterns.git"
+    gitRemoteRepo := "git@github.com:ataraxer/spray-patterns.git",
 
     parallelExecution := true
   )

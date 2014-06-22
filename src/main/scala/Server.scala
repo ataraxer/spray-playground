@@ -2,10 +2,12 @@ package com.ataraxer.sprayer
 
 import akka.io.IO
 import akka.actor.{ActorSystem, Actor, Props}
+import akka.actor.Actor.Receive
 
 import spray.can.Http
 import spray.http._
 import spray.http.HttpMethods._
+import spray.routing._
 
 
 /**
@@ -20,8 +22,17 @@ object Server extends App {
 }
 
 
-class Server extends Actor {
-  def receive = {
+class Server extends HttpServiceActor {
+  val echoRoute = get {
+    path("echo") {
+      parameters('msg) { msg =>
+        complete { "Echo: " + msg }
+      }
+    }
+  }
+
+
+  val manualHandlers: Receive = {
     case Http.Connected(remoteAddress, localAddress) => {
       println("Connection established!")
       println("Remote address: " + remoteAddress)
@@ -32,11 +43,10 @@ class Server extends Actor {
     case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => {
       sender ! HttpResponse(entity = "Pong!")
     }
-
-    case request: HttpRequest => {
-      sender ! HttpResponse(entity = "Unknown request: %s".format(request))
-    }
   }
+
+
+  def receive = manualHandlers orElse runRoute(echoRoute)
 }
 
 
