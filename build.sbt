@@ -28,6 +28,9 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-log4j12" % "1.7.5"
     exclude("org.slf4j", "slf4j-simple"))
 
+Revolver.settings
+
+mainClass in Revolver.reStart := Some("com.ataraxer.sprayer.REST")
 
 /* ==== OTHER ==== */
 testOptions in Test += Tests.Setup { classLoader =>
