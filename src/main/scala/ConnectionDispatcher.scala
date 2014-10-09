@@ -3,12 +3,15 @@ package com.ataraxer.sprayer
 import akka.io.IO
 import akka.actor._
 import akka.actor.Actor.Receive
+import akka.event.Logging
+import akka.event.Logging._
 
 import spray.can.Http
 import spray.http._
 import spray.http.HttpMethods._
 import spray.http.StatusCodes._
 import spray.routing._
+import spray.routing.directives._
 
 
 /**
@@ -39,7 +42,32 @@ class ConnectionDispatcher extends Actor {
 }
 
 
+object RequestHandler {
+  def loggerImpl(request: HttpRequest) = {
+    val requestTime = System.currentTimeMillis
+
+    val responseProcessor: PartialFunction[Any, Unit] = {
+      case response: HttpResponse =>
+        val responseTime = System.currentTimeMillis - requestTime
+        println(
+          request.method + " " +
+          request.uri.toRelative + " " +
+          response.status + " " +
+          responseTime)
+      case other =>
+        println(request.uri + " " + other)
+    }
+
+    responseProcessor.apply _
+  }
+
+  val logger = LoggingMagnet(loggerImpl _)
+}
+
+
 class RequestHandler(connection: ActorRef) extends HttpServiceActor {
+  import RequestHandler._
+
   private var requestedPing = false
 
   val route = get {
@@ -57,7 +85,9 @@ class RequestHandler(connection: ActorRef) extends HttpServiceActor {
     }
   }
 
-  def receive = runRoute(route)
+  def receive = runRoute {
+    logRequestResponse(logger)(route)
+  }
 }
 
 
