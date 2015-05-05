@@ -1,9 +1,11 @@
-package com.ataraxer.sprayer
+package playground.spray
 
 import akka.actor.{ActorSystem, Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+
 import spray.routing.SimpleRoutingApp
+
 import scala.concurrent.duration._
 import scala.util._
 

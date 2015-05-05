@@ -1,4 +1,4 @@
-package com.ataraxer.sprayer
+package playground.spray
 
 import akka.io.IO
 import akka.actor.{ActorSystem, Actor, Props}
@@ -10,9 +10,6 @@ import spray.http.HttpMethods._
 import spray.routing._
 
 
-/**
- *
- */
 object Server extends App {
   implicit val system = ActorSystem("sprayer-system")
 

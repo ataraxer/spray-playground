@@ -1,4 +1,4 @@
-package com.ataraxer.sprayer
+package playground.spray
 
 import akka.io.IO
 import akka.actor._
