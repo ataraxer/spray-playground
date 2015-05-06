@@ -1,22 +1,22 @@
 package playground.spray
 
-import akka.actor._
-import akka.io._
+import akka.actor.{Actor, ActorContext, ActorSystem, Props}
+import akka.io.IO
 import akka.pattern.ask
 
 import spray.can._
-import spray.http._
-import spray.routing._
+import spray.http.{HttpRequest, HttpResponse, Uri}
+import spray.http.HttpMethods.GET
+import spray.routing.{Route, Directive1, HttpService}
 
-import shapeless._
+import shapeless.{HNil, ::}
 
 import scala.util.{Success, Failure}
-import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.language.implicitConversions
 
 
-class Server extends Actor with HttpService with BlackboxSupport {
+class DemoServer extends Actor with HttpService with BlackboxSupport {
+  // required by `HttpSerivce` trait
   def actorRefFactory = context
 
   def receive = runRoute {
@@ -25,7 +25,7 @@ class Server extends Actor with HttpService with BlackboxSupport {
         complete("ataraxer")
       } ~
       path("ping") {
-        blackbox(5.seconds) { user =>
+        blackbox(5.seconds, context) { user =>
           complete(user)
         }
       }
@@ -35,50 +35,25 @@ class Server extends Actor with HttpService with BlackboxSupport {
 
 
 trait BlackboxSupport {
-  def blackbox(magnet: BlackboxMagnet): Directive1[String] = magnet
-}
-
-
-trait BlackboxMagnet extends Directive1[String]
-
-
-object BlackboxMagnet extends directives.HeaderDirectives {
-  private var authorizedUsers = Set.empty[String]
-
-
-  implicit def fromContext
-    (timeout: FiniteDuration)
-    (implicit context: ActorContext): BlackboxMagnet =
+  def blackbox(
+    timeout: FiniteDuration,
+    context: ActorContext): Directive1[String] =
   {
-    new BlackboxMagnet {
-      def happly(f: (String :: HNil) => Route) = {
-        optionalHeaderValueByName("Authorization") {
-          case Some(user) => ctx => {
-            if (authorizedUsers contains user) {
-              ctx.complete(f"Already authorized: $user")
-            } else {
-              ctx.reject(AuthorizationFailedRejection)
-            }
+    new Directive1[String] {
+      def happly(f: (String :: HNil) => Route): Route = { ctx =>
+        import context.system
+        import context.dispatcher
+
+        val request = HttpRequest(GET, Uri("http://localhost:8080/auth"), Nil)
+        val auth = (IO(Http) ? request)(timeout)
+
+        auth onComplete {
+          case Success(response: HttpResponse) => {
+            val user = response.entity.asString
+            f(user :: HNil)(ctx)
           }
 
-
-          case None => ctx => {
-            import context.system
-            import context.dispatcher
-
-            val request = HttpRequest(HttpMethods.GET, Uri("http://localhost:8080/auth"), Nil)
-            val auth = (IO(Http) ? request)(timeout)
-
-            auth onComplete {
-              case Success(response: HttpResponse) => {
-                val user = response.entity.asString
-                authorizedUsers += user
-                f(user :: HNil)(ctx)
-              }
-
-              case Failure(reason) => ctx.failWith(reason)
-            }
-          }
+          case Failure(reason) => ctx.failWith(reason)
         }
       }
     }
@@ -88,7 +63,7 @@ object BlackboxMagnet extends directives.HeaderDirectives {
 
 object CustomSprayDirective extends App {
   implicit val system = ActorSystem("custom-spray-directive")
-  val server = system actorOf Props[Server]
+  val server = system actorOf Props[DemoServer]
   IO(Http) ! Http.Bind(server, "localhost", 8080)
 }
 
